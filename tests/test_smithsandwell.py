@@ -1,18 +1,20 @@
-import os
-import sys; sys.path.append('..')
+import os, sys; sys.path.append('..')
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-import globotopo.topodata as topodata
+import globotopo
 
 # Construct a topodata
-data = topodata.smithsandwell()
+t1 = time.time()
+data = globotopo.smithsandwell()
+print("Elapsed time: {:7.3f}".format(time.time() - t1))
 
 # Test extraction of subsampled global data
 glat, glon, gtopo = data.get_all(subsample=64)
 
 # Test extraction of regional data
-r1lat, r1lon, r1topo = data.get_region([30,  45, 200, 240], subsample=32)
-r2lat, r2lon, r2topo = data.get_region([-20, 40, 330,  20], subsample=32)
+r1lat, r1lon, r1topo = data.get_region([30,  45, -160, -120], subsample=32)
+r2lat, r2lon, r2topo = data.get_region([-20, 40, -30,  20], subsample=32)
 
 # Plot the result
 plt.figure()

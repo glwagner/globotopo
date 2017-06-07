@@ -5,11 +5,13 @@ defines methods that permit the extraction either of all the topography with
 globotopo.get_all() or a subset with globotopo.get_region(region)."""
 
 from __future__ import division
-import os
+import os, time
 import numpy as np
 from numpy import pi
 
-class globotopo(object):
+
+
+class topo(object):
     def __init__(self):
         pass
 
@@ -35,121 +37,94 @@ class globotopo(object):
         return lat, lon, topo
 
 
-    def get_region(self, box, subsample=None):
+    def get_region(self, region, subsample=None):
         """ Extract a rectangular region from the topo data.
 
         Args:
-            box: An array-like input of the form 
-                box = [south, north, east, west] that defines the 
+            region: An array-like input of the form 
+                region = [south, north, east, west] that defines the 
                 latitude-longitude limits of the region to be extracted.
                 The input latitudes must lie between -90 and 90 and the
-                input longitudes must lie between 0 and 360.
-                For example, to extract a box between 20S and 40N, and
-                30W and 5E, set box = [-20, 40, 330, 5].
+                input longitudes must lie between -180 and 180.
+                For example, to extract a region between 20S and 40N, and
+                30W and 5E, set box = [-20, 40, -30, 5].
+
             subsample (int): Factor by which to subsample the output.
 
         Returns:
             A tuple of numpy arrays containing the extracted latitude, 
             longitude, and topography data, in that order. 
             
-            NOTE: If the box spans the Prime Meridian (lon=0), the western data
+            NOTE: If the region spans the Prime Meridian (lon=0), the western data
             will be assigned negative Longitude values and pasted to the eastern
             data to preserve continuity of the output grid.
         """
 
         # Extract sides of the box, flipping south/north coordinates if need be
-        south, north = np.sort(np.array(box)[[0, 1]])
-        west, east = np.array(box)[[2, 3]]
+        south, north = np.sort(np.array(region)[[0, 1]])
+        west, east = np.array(region)[[2, 3]]
 
         # Raise hell if something is amiss
-        if not 0 <= east <= 360 or not 0 <= west <= 360:
-            raise(ValueError, 'Longitudes must lie between 0 and 360 degrees.')
+        if not -180 <= east <= 180 or not -180 <= west <= 180:
+            raise ValueError("Longitudes must lie between +/-180 degrees")
         elif south < self.minlat or north > self.maxlat:
-            raise(ValueError, "Latitudes must lie between +/- "
+            raise ValueError("Latitudes must lie between +/- "
                     "{} degrees".format(self.maxlat))
         elif east == west or south == north:
-            raise(ValueError, "Latitudes and longitudes must not be unique!")
+            raise ValueError("Latitudes and longitudes must not be unique!")
 
         # Wrapping is needed if coordinates cross the prime meridian
         if west > east: 
-            acrossgreenwich = True
+            acrossdateline = True
         else:
-            acrossgreenwich = False
+            acrossdateline = False
 
         # Find indices for cutting, taking care not to produce bad indices.
-        jsouth = self.searchsorted_left( self.lat, south)
-        jnorth = self.searchsorted_right(self.lat, north)
+        jsouth = searchsorted_left( self.lat, south)
+        jnorth = searchsorted_right(self.lat, north)
 
-        iwest = self.searchsorted_left( self.lon, west)
-        ieast = self.searchsorted_right(self.lon, east)
+        iwest = searchsorted_left( self.lon, west)
+        ieast = searchsorted_right(self.lon, east)
 
         # Cut
-        boxlat  = self.lat[jsouth:jnorth]
+        rlat  = self.lat[jsouth:jnorth]
 
-        if not acrossgreenwich:
-            boxtopo = self.topomem[jsouth:jnorth, iwest:ieast]
-            boxlon  = self.lon[iwest:ieast]
+        if not acrossdateline:
+            rtopo = self.topomem[jsouth:jnorth, iwest:ieast]
+            rlon  = self.lon[iwest:ieast]
 
-        elif acrossgreenwich:
-            nboxlat = jnorth - jsouth
-            (nboxeast, nboxwest) = (ieast, self.nlon-iwest)
+        elif acrossdateline:
+            nrlat = jnorth - jsouth
+            (nreast, nrwest) = (ieast, self.nlon-iwest)
 
-            boxlon = np.zeros(nboxeast+nboxwest, dtype=np.float64)
-            boxtopo = np.zeros((nboxlat, nboxeast+nboxwest), dtype=np.float64)
+            rlon = np.zeros(nreast+nrwest, dtype=np.float64)
+            rtopo = np.zeros((nrlat, nreast+nrwest), dtype=np.float64)
 
             # Glue together either side of the prime meridian
-            boxtopo[:, nboxwest:] = self.topomem[jsouth:jnorth, :ieast]
-            boxtopo[:, :nboxwest] = self.topomem[jsouth:jnorth, iwest:]
+            rtopo[:, nrwest:] = self.topomem[jsouth:jnorth, :ieast]
+            rtopo[:, :nrwest] = self.topomem[jsouth:jnorth, iwest:]
 
             # Shift coordinates to preserve monotonicity of data
-            boxlon[nboxwest:] = self.lon[:ieast]
-            boxlon[:nboxwest] = self.lon[iwest:] - 360
+            rlon[nrwest:] = self.lon[:ieast] + 360
+            rlon[:nrwest] = self.lon[iwest:]
 
         if subsample is not None:
-            boxtopo = boxtopo[::subsample, ::subsample]
-            boxlat  = boxlat[::subsample]
-            boxlon  = boxlon[::subsample]
+            rtopo = rtopo[::subsample, ::subsample]
+            rlat  = rlat[::subsample]
+            rlon  = rlon[::subsample]
 
-        boxlon, boxlat = np.meshgrid(boxlon, boxlat)
+        rlon, rlat = np.meshgrid(rlon, rlat)
 
-        return boxlat, boxlon, boxtopo
+        return rlat, rlon, rtopo
+       
 
-
-    def searchsorted_left(self, data, leftside):
-        """Return the index of data so that data[ileft] is either the first 
-        index in data or lying just left of leftside."""
-
-        if len(data.shape) > 1:
-            raise(ValueError, "Input data must be one-dimensional.")
-
-        ileft = np.max([
-            np.searchsorted(data, leftside,  side='left')-1, 0])
-
-        return ileft
-
-
-    def searchsorted_right(self, data, rightside):
-        """Return the index of data so that data[iright] is either the last
-        index in data or lying just right of rightside"""
-
-        if len(data.shape) > 1:
-            raise(ValueError, "Input data must be one-dimensional.")
-
-        iright = np.min([
-            np.searchsorted(data, rightside,  side='right'), np.size(data)-1])
-
-        return iright
-
-
-        
-
-class smithsandwell(globotopo):
+class smithsandwell(topo):
     def __init__(self, datapath='../data/topo_18.1.img'):
         """Return a smithsandwell globotopo object. The Smith-Sandwell
         grid is a Mercator projection."""
 
         if not os.path.isfile(datapath):
-            raise(ValueError, 
+            raise ValueError( 
                 "Check your topo!\n"
                 "The file {} does not exist.".format(os.path.abspath(datapath))
             )
@@ -174,10 +149,46 @@ class smithsandwell(globotopo):
         # Equaspaced, centered 1/2 arcmin grid in longitude
         self.lon = np.linspace(0, 360-1/60, self.nlon) + 1/120
 
-        # Create memmap of topo data
+        # Create memmap of topo data. Coordinates are topomem[lat, lon]
         self.topomem = np.flipud(
-            np.memmap(self.datapath, dtype='>i2', shape=(self.nlat, self.nlon))
-        )
+            np.memmap(self.datapath, dtype='>i2', shape=(self.nlat, self.nlon), 
+            mode='r'))
+
+        # Reshuffte topomem and longitude arrays so longitude lies between +/-180
+        imid = self.lon.size//2
+        self.lon[imid:] = self.lon[imid:] - 360
+
+        isort = np.argsort(self.lon)
+
+        self.lon = self.lon[isort]
+        self.topomem = self.topomem[:, isort]
 
 
-    
+
+def searchsorted_left(data, leftside):
+    """Return the index of data so that data[ileft] is either the first 
+    index in data or lying just left of leftside."""
+
+    if len(data.shape) > 1:
+        raise ValueError("Input data must be one-dimensional.")
+
+    ileft = np.max([
+        np.searchsorted(data, leftside,  side='left')-1, 0])
+
+    return ileft
+
+
+def searchsorted_right(data, rightside):
+    """Return the index of data so that data[iright] is either the last
+    index in data or lying just right of rightside"""
+
+    if len(data.shape) > 1:
+        raise ValueError("Input data must be one-dimensional.")
+
+    iright = np.min([
+        np.searchsorted(data, rightside,  side='right'), np.size(data)-1])
+
+    return iright
+
+
+ 

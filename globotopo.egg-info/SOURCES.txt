@@ -1,0 +1,8 @@
+globotopo/__init__.py
+globotopo/globotopo.py
+globotopo.egg-info/PKG-INFO
+globotopo.egg-info/SOURCES.txt
+globotopo.egg-info/dependency_links.txt
+globotopo.egg-info/not-zip-safe
+globotopo.egg-info/requires.txt
+globotopo.egg-info/top_level.txt
