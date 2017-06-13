@@ -165,6 +165,9 @@ class smithsandwell(topo):
 
 
 
+
+
+
 def searchsorted_left(data, leftside):
     """Return the index of data so that data[ileft] is either the first 
     index in data or lying just left of leftside."""
@@ -189,6 +192,3 @@ def searchsorted_right(data, rightside):
         np.searchsorted(data, rightside,  side='right'), np.size(data)-1])
 
     return iright
-
-
- 
