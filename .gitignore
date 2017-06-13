@@ -4,3 +4,5 @@
 *.img
 data/*
 sandbox/simpleTest
+**/*.pyc
+
