@@ -5,9 +5,12 @@ defines methods that permit the extraction either of all the topography with
 globotopo.get_all() or a subset with globotopo.get_region(region)."""
 
 from __future__ import division
+
 import os, time
 import numpy as np
+
 from numpy import pi
+from scipy.interpolate import griddata
 
 
 
@@ -116,6 +119,35 @@ class topo(object):
         rlon, rlat = np.meshgrid(rlon, rlat)
 
         return rlat, rlon, rtopo
+
+
+    def interp_to_grid(self, lon, lat, method='linear'):
+        """Interpolate bathymetry onto an X, Y grid of longitudes and latitudes.
+        
+        Args:
+            lon: An array of longitudes.
+
+            lat: An array of latitudes.
+
+            method (str): method to use for interpolation. The options are 
+                'nearest', 'linear', and 'cubic'
+
+        Returns:
+            topo: The topography at X, Y, linearly interpolated from the underlying
+                topography dataset.
+        """
+
+        # Define the domain
+        west, east   = lon[:, 0].min(), lon[:, -1].max()
+        south, north = lat.min(), lat.max()
+        nlat, nlon = lon.shape
+
+        # Extract topography data
+        dlat, dlon, topo = self.get_region([south, north, west, east])
+
+        # Interpolate and return
+        return griddata((dlon.ravel(), dlat.ravel()), topo.ravel(), 
+            (lon.ravel(), lat.ravel()), method=method).reshape(nlat, nlon)
        
 
 class smithsandwell(topo):
