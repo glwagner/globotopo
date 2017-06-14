@@ -1,8 +1,7 @@
 # The .gitignore file for the 'topotool' application.
 
-*.swp
 *.img
 data/*
 sandbox/simpleTest
 **/*.pyc
-
+**/*.swp
