@@ -6,7 +6,7 @@ import globotopo
 
 # Construct a topodata
 t1 = time.time()
-data = globotopo.smithsandwell()
+data = globotopo.SmithSandwell()
 print("Elapsed time: {:7.3f}".format(time.time() - t1))
 
 # Test extraction of subsampled global data
