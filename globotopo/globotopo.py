@@ -14,7 +14,7 @@ from scipy.interpolate import griddata
 
 
 
-class topo(object):
+class Topo(object):
     def __init__(self):
         pass
 
@@ -150,7 +150,7 @@ class topo(object):
             (lon.ravel(), lat.ravel()), method=method).reshape(nlat, nlon)
        
 
-class smithsandwell(topo):
+class SmithSandwell(Topo):
     def __init__(self, datapath='../data/topo_18.1.img'):
         """Return a smithsandwell globotopo object. The Smith-Sandwell
         grid is a Mercator projection."""
