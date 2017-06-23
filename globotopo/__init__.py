@@ -1,1 +1,1 @@
-from .globotopo import smithsandwell
+from .globotopo import SmithSandwell
